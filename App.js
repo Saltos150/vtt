@@ -1,4 +1,23 @@
 const { useState, useEffect } = React;
+// Importar funciones de Firebase SDK (Estas líneas asumen que el SDK se carga desde CDN en index.html)
+// Si utilizas un entorno de desarrollo con npm, estas líneas serían:
+// import { initializeApp } from "firebase/app";
+// import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc } from "firebase/firestore";
+
+// Configuración de Firebase (REEMPLAZA CON TUS PROPIAS CREDENCIALES)
+const firebaseConfig = {
+    apiKey: "AIzaSyBCzsljc7TR_rIASvW4dBxdP3RzN98A-Z8",
+    authDomain: "fechas-y-visitas.firebaseapp.com",
+    projectId: "fechas-y-visitas",
+    storageBucket: "fechas-y-visitas.firebasestorage.app",
+    messagingSenderId: "913808797987",
+    appId: "1:913808797987:web:067bfecc7660fd6a7cdc96"
+};
+
+// Inicializar Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const townsCollection = db.collection('towns');
 
 const predefinedTownsList = [
     { name: 'UR 1' }, { name: 'UR 2' }, { name: 'UR 3' }, { name: 'UR 4' }, { name: 'UR 5' }, { name: 'UR 6' }, { name: 'UR 7' }, { name: 'UR 8' }, { name: 'UR 9' },
@@ -41,81 +60,79 @@ function App() {
     const [editTownManualDate, setEditTownManualDate] = useState('');
 
     useEffect(() => {
-        try {
-            const savedTowns = localStorage.getItem('valenciaTowns');
-            if (savedTowns) {
-                const parsedTowns = JSON.parse(savedTowns).map(town => ({
-                    ...town,
-                    visitHistory: town.visitHistory.map(dateStr => new Date(dateStr)),
-                    createdAt: new Date(town.createdAt)
-                }));
-                setTowns(parsedTowns);
-            } else {
-                const initialTowns = predefinedTownsList.map(town => ({
-                    id: self.crypto.randomUUID(),
-                    name: town.name,
-                    visited: false,
-                    notes: '',
-                    visitHistory: [],
-                    createdAt: new Date(),
-                }));
-                setTowns(initialTowns);
-            }
-        } catch (error) {
-            console.error("Error al cargar los datos:", error);
-             const initialTowns = predefinedTownsList.map(town => ({
-                id: self.crypto.randomUUID(),
-                name: town.name,
-                visited: false,
-                notes: '',
-                visitHistory: [],
-                createdAt: new Date(),
-            }));
-            setTowns(initialTowns);
-        }
-        setLoading(false);
-    }, []);
+        const unsubscribe = townsCollection.onSnapshot(snapshot => {
+            const townsData = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    visitHistory: data.visitHistory || [],
+                    createdAt: data.createdAt ? data.createdAt.toDate() : new Date(),
+                };
+            });
+            setTowns(townsData);
+            setLoading(false);
+        }, error => {
+            console.error("Error fetching data: ", error);
+            setLoading(false);
+        });
 
-    useEffect(() => {
-        if (!loading) {
-            localStorage.setItem('valenciaTowns', JSON.stringify(towns));
-        }
-    }, [towns, loading]);
+        // Si la colección está vacía, la inicializa con los datos predefinidos
+        townsCollection.get().then(snapshot => {
+            if (snapshot.empty) {
+                const batch = db.batch();
+                predefinedTownsList.forEach(town => {
+                    const newTownRef = townsCollection.doc();
+                    batch.set(newTownRef, {
+                        name: town.name,
+                        visited: false,
+                        notes: '',
+                        visitHistory: [],
+                        createdAt: firebase.firestore.Timestamp.fromDate(new Date()),
+                    });
+                });
+                batch.commit().then(() => {
+                    console.log("Predefined towns added successfully.");
+                }).catch(error => {
+                    console.error("Error adding predefined towns: ", error);
+                });
+            }
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     const getLastVisit = (town) => {
         if (!town.visitHistory || town.visitHistory.length === 0) return null;
-        const dates = town.visitHistory.map(d => new Date(d));
+        const dates = town.visitHistory.map(d => d.toDate());
         return new Date(Math.max.apply(null, dates));
     };
 
-    const handleMarkVisited = (town) => {
-        const updatedTowns = towns.map(t => {
-            if (t.id === town.id) {
-                const newHistory = [...t.visitHistory];
-                if (!t.visited) {
-                    newHistory.push(new Date());
-                } else {
-                    const lastVisit = getLastVisit(t);
-                    if (lastVisit) {
-                        const indexToRemove = newHistory.findIndex(d => new Date(d).getTime() === lastVisit.getTime());
-                        if (indexToRemove > -1) {
-                            newHistory.splice(indexToRemove, 1);
-                        }
-                    }
+    const handleMarkVisited = async (town) => {
+        const newHistory = [...town.visitHistory];
+        if (!town.visited) {
+            newHistory.push(firebase.firestore.Timestamp.fromDate(new Date()));
+        } else {
+            const lastVisit = getLastVisit(town);
+            if (lastVisit) {
+                const indexToRemove = newHistory.findIndex(d => d.toDate().getTime() === lastVisit.getTime());
+                if (indexToRemove > -1) {
+                    newHistory.splice(indexToRemove, 1);
                 }
-                return { ...t, visited: newHistory.length > 0, visitHistory: newHistory };
             }
-            return t;
+        }
+        await townsCollection.doc(town.id).update({
+            visited: newHistory.length > 0,
+            visitHistory: newHistory
         });
-        setTowns(updatedTowns);
     };
 
-    const handleDeleteTown = (townId) => {
-        setTowns(towns.filter(t => t.id !== townId));
+    const handleDeleteTown = async (townId) => {
+        await townsCollection.doc(townId).delete();
         setShowDeleteConfirmationModal(false);
         setShowEditTownModal(false);
     };
-    
+
     const handleEditTown = (town) => {
         setTownToEdit(town);
         setEditTownName(town.name);
@@ -125,38 +142,39 @@ function App() {
         setShowEditTownModal(true);
     };
 
-    const handleUpdateTown = () => {
+    const handleUpdateTown = async () => {
         if (!editTownName || !townToEdit) return;
-        
-        const updatedTowns = towns.map(t => {
-            if (t.id === townToEdit.id) {
-                const manualDate = editTownManualDate ? new Date(editTownManualDate) : null;
-                const newHistory = [...t.visitHistory];
-                if (manualDate) {
-                    const dateExists = newHistory.some(d => new Date(d).toISOString().split('T')[0] === editTownManualDate);
-                    if (!dateExists) {
-                        newHistory.push(manualDate);
-                    }
-                }
-                return { ...t, name: editTownName, notes: editTownNotes, visitHistory: newHistory, visited: newHistory.length > 0 };
+
+        const manualDate = editTownManualDate ? new Date(editTownManualDate) : null;
+        const newHistory = [...townToEdit.visitHistory];
+
+        if (manualDate) {
+            const dateExists = newHistory.some(d => d.toDate().toISOString().split('T')[0] === editTownManualDate);
+            if (!dateExists) {
+                newHistory.push(firebase.firestore.Timestamp.fromDate(manualDate));
             }
-            return t;
+        }
+
+        await townsCollection.doc(townToEdit.id).update({
+            name: editTownName,
+            notes: editTownNotes,
+            visitHistory: newHistory,
+            visited: newHistory.length > 0
         });
-        setTowns(updatedTowns);
+
         setShowEditTownModal(false);
     };
 
-    const handleAddTown = () => {
+    const handleAddTown = async () => {
         if (!newTownName) return;
         const newTown = {
-            id: self.crypto.randomUUID(),
             name: newTownName,
             visited: false,
             notes: '',
             visitHistory: [],
-            createdAt: new Date(),
+            createdAt: firebase.firestore.Timestamp.fromDate(new Date()),
         };
-        setTowns([...towns, newTown]);
+        await townsCollection.add(newTown);
         setNewTownName('');
         setShowAddTownModal(false);
     };
@@ -164,7 +182,7 @@ function App() {
     const handleDownloadCSV = () => {
         const headers = ["Pueblo", "Visitado", "Última Visita", "Notas", "Historial Completo"];
         const rows = towns.map(town => {
-            const history = town.visitHistory.map(d => new Date(d).toLocaleDateString('es-ES')).join(', ');
+            const history = town.visitHistory.map(d => d.toDate().toLocaleDateString('es-ES')).join(', ');
             return [
                 `"${town.name.replace(/"/g, '""')}"`,
                 town.visited ? "Sí" : "No",
@@ -182,8 +200,13 @@ function App() {
         URL.revokeObjectURL(link.href);
     };
 
-    const handleResetAllVisitedTowns = () => {
-        setTowns(towns.map(t => ({ ...t, visited: false })));
+    const handleResetAllVisitedTowns = async () => {
+        const visitedTownsSnapshot = await townsCollection.where('visited', '==', true).get();
+        const batch = db.batch();
+        visitedTownsSnapshot.forEach(doc => {
+            batch.update(doc.ref, { visited: false, visitHistory: [] });
+        });
+        await batch.commit();
     };
 
     const TownListItem = ({ town, isPrimaryAction = true }) => {
@@ -213,7 +236,7 @@ function App() {
            </li>
         );
     };
-    
+
     if (loading) return <div className="flex items-center justify-center min-h-screen bg-gray-100"><div className="text-xl font-semibold">Cargando...</div></div>;
 
     const sortedTowns = [...towns].sort((a, b) => {
@@ -306,7 +329,7 @@ function App() {
                         </div>
                     </div>
                 )}
-                
+
                 {showDeleteConfirmationModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center">
