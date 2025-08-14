@@ -77,7 +77,7 @@ function App() {
             setLoading(false);
         });
 
-        // Lógica de inicialización más robusta
+        // **Lógica de inicialización más robusta para evitar duplicados**
         const metadataDoc = db.collection('metadata').doc('initStatus');
         metadataDoc.get().then(docSnapshot => {
             if (!docSnapshot.exists) {
