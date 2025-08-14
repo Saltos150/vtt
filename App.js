@@ -249,7 +249,7 @@ function App() {
         if (!lastVisitA && !lastVisitB) return a.name.localeCompare(b.name);
         return lastVisitA - lastVisitB;
     }) : [];
-    
+
     const filteredTowns = sortedTowns.filter(town => town.name.toLowerCase().includes(searchTerm.toLowerCase()));
     const unvisitedTowns = filteredTowns.filter(town => !town.visited);
     const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
