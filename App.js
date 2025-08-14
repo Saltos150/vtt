@@ -77,7 +77,7 @@ function App() {
             setLoading(false);
         });
 
-        // **Lógica de inicialización más robusta para evitar duplicados**
+        // Lógica de inicialización más robusta
         const metadataDoc = db.collection('metadata').doc('initStatus');
         metadataDoc.get().then(docSnapshot => {
             if (!docSnapshot.exists) {
@@ -241,15 +241,15 @@ function App() {
 
     if (loading) return <div className="flex items-center justify-center min-h-screen bg-gray-100"><div className="text-xl font-semibold">Cargando...</div></div>;
 
-    const sortedTowns = [...towns].sort((a, b) => {
+    const sortedTowns = towns.length > 0 ? [...towns].sort((a, b) => {
         const lastVisitA = getLastVisit(a);
         const lastVisitB = getLastVisit(b);
         if (!lastVisitA && lastVisitB) return -1;
         if (lastVisitA && !lastVisitB) return 1;
         if (!lastVisitA && !lastVisitB) return a.name.localeCompare(b.name);
         return lastVisitA - lastVisitB;
-    });
-
+    }) : [];
+    
     const filteredTowns = sortedTowns.filter(town => town.name.toLowerCase().includes(searchTerm.toLowerCase()));
     const unvisitedTowns = filteredTowns.filter(town => !town.visited);
     const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
