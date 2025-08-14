@@ -77,9 +77,10 @@ function App() {
             setLoading(false);
         });
 
-        // Si la colección está vacía, la inicializa con los datos predefinidos
-        townsCollection.get().then(snapshot => {
-            if (snapshot.empty) {
+        // Lógica de inicialización más robusta
+        const metadataDoc = db.collection('metadata').doc('initStatus');
+        metadataDoc.get().then(docSnapshot => {
+            if (!docSnapshot.exists) {
                 const batch = db.batch();
                 predefinedTownsList.forEach(town => {
                     const newTownRef = townsCollection.doc();
@@ -91,6 +92,7 @@ function App() {
                         createdAt: firebase.firestore.Timestamp.fromDate(new Date()),
                     });
                 });
+                batch.set(metadataDoc, { initialized: true });
                 batch.commit().then(() => {
                     console.log("Predefined towns added successfully.");
                 }).catch(error => {
