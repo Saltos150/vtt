@@ -261,31 +261,24 @@ function App() {
         return lastVisitA - lastVisitB;
     }) : [];
 
-    const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
+    const filteredTowns = sortedTowns.filter(town => town.name.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Nueva lógica de ordenamiento
+    // Lógica de ordenación corregida
+    const unvisitedTowns = filteredTowns.filter(town => !town.visited);
+    const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
+
     const getOldestVisitedTown = () => {
         const sortedVisited = [...visitedTowns].sort((a, b) => getLastVisit(a) - getLastVisit(b));
         return sortedVisited.length > 0 ? sortedVisited[0] : null;
     };
 
-    let unvisitedTowns = filteredTowns.filter(town => !town.visited);
-    const oldestVisited = getOldestVisitedTown();
     let next10UnvisitedTowns = [];
+    const oldestVisited = getOldestVisitedTown();
 
     if (oldestVisited) {
-        // Encontramos el pueblo que era el más antiguo visitado
-        const oldestVisitedPredefined = predefinedTownsList.find(t => t.name === oldestVisited.name);
-        
-        // Lo ponemos de primero en la lista de próximas visitas
-        const newUnvisitedList = [oldestVisitedPredefined];
-
-        // Añadimos el resto de pueblos no visitados ordenados alfabéticamente
         const otherUnvisited = unvisitedTowns.filter(town => town.name !== oldestVisited.name).sort((a, b) => a.name.localeCompare(b.name));
-        next10UnvisitedTowns = [...newUnvisitedList, ...otherUnvisited].slice(0, 10);
-        
+        next10UnvisitedTowns = [oldestVisited, ...otherUnvisited].slice(0, 10);
     } else {
-        // Si no hay pueblos visitados, mostramos los 10 primeros no visitados
         next10UnvisitedTowns = unvisitedTowns.slice(0, 10);
     }
     
