@@ -58,6 +58,9 @@ function App() {
     const [editTownName, setEditTownName] = useState('');
     const [editTownNotes, setEditTownNotes] = useState('');
     const [editTownManualDate, setEditTownManualDate] = useState('');
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [resetPassword, setResetPassword] = useState('');
+    const [passwordError, setPasswordError] = useState(false);
 
     useEffect(() => {
         const unsubscribe = townsCollection.onSnapshot(snapshot => {
@@ -77,7 +80,6 @@ function App() {
             setLoading(false);
         });
 
-        // Lógica de inicialización mejorada: usa una colección de metadata para evitar duplicaciones
         const metadataDoc = db.collection('metadata').doc('initStatus');
         metadataDoc.get().then(docSnapshot => {
             if (!docSnapshot.exists) {
@@ -203,14 +205,23 @@ function App() {
     };
 
     const handleResetAllVisitedTowns = async () => {
+        if (resetPassword !== "1980") {
+            setPasswordError(true);
+            return;
+        }
+
         const visitedTownsSnapshot = await townsCollection.where('visited', '==', true).get();
         const batch = db.batch();
         visitedTownsSnapshot.forEach(doc => {
             batch.update(doc.ref, { visited: false, visitHistory: [] });
         });
         await batch.commit();
-    };
 
+        setShowResetModal(false);
+        setResetPassword('');
+        setPasswordError(false);
+    };
+    
     const TownListItem = ({ town, isPrimaryAction = true }) => {
         const lastVisit = getLastVisit(town);
         return (
@@ -250,11 +261,34 @@ function App() {
         return lastVisitA - lastVisitB;
     }) : [];
 
-    const filteredTowns = sortedTowns.filter(town => town.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    const unvisitedTowns = filteredTowns.filter(town => !town.visited);
     const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
-    const next10UnvisitedTowns = unvisitedTowns.slice(0, 10);
+    
+    // Nueva lógica de ordenamiento
+    const getOldestVisitedTown = () => {
+        const sortedVisited = [...visitedTowns].sort((a, b) => getLastVisit(a) - getLastVisit(b));
+        return sortedVisited.length > 0 ? sortedVisited[0] : null;
+    };
 
+    let unvisitedTowns = filteredTowns.filter(town => !town.visited);
+    const oldestVisited = getOldestVisitedTown();
+    let next10UnvisitedTowns = [];
+
+    if (oldestVisited) {
+        // Encontramos el pueblo que era el más antiguo visitado
+        const oldestVisitedPredefined = predefinedTownsList.find(t => t.name === oldestVisited.name);
+        
+        // Lo ponemos de primero en la lista de próximas visitas
+        const newUnvisitedList = [oldestVisitedPredefined];
+
+        // Añadimos el resto de pueblos no visitados ordenados alfabéticamente
+        const otherUnvisited = unvisitedTowns.filter(town => town.name !== oldestVisited.name).sort((a, b) => a.name.localeCompare(b.name));
+        next10UnvisitedTowns = [...newUnvisitedList, ...otherUnvisited].slice(0, 10);
+        
+    } else {
+        // Si no hay pueblos visitados, mostramos los 10 primeros no visitados
+        next10UnvisitedTowns = unvisitedTowns.slice(0, 10);
+    }
+    
     return (
         <div className="h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100 font-inter p-4 sm:p-6 md:p-8">
             <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 sm:p-8 md:p-10 h-full flex flex-col">
@@ -276,7 +310,7 @@ function App() {
 
                     <div className="mb-10 p-6 bg-yellow-50 dark:bg-yellow-900 rounded-lg shadow-md">
                         <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-4">{`⚠️ Poblaciones Pendientes (${unvisitedTowns.length})`}</h2>
-                        {unvisitedTowns.length > 0 ? <ul className="space-y-3">{unvisitedTowns.map(town => <TownListItem key={town.id} town={town} isPrimaryAction={false} />)}</ul> : <div className="text-center"><p>¡Enhorabuena! Has visitado todas las poblaciones.</p><button onClick={handleResetAllVisitedTowns} className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full">Reiniciar Ciclo</button></div>}
+                        {unvisitedTowns.length > 0 ? <ul className="space-y-3">{unvisitedTowns.map(town => <TownListItem key={town.id} town={town} isPrimaryAction={false} />)}</ul> : <div className="text-center"><p>¡Enhorabuena! Has visitado todas las poblaciones.</p><button onClick={() => setShowResetModal(true)} className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full">Reiniciar Ciclo</button></div>}
                     </div>
 
                     <div className="mb-10 p-6 bg-green-50 dark:bg-green-900 rounded-lg shadow-md">
@@ -340,6 +374,30 @@ function App() {
                             <div className="mt-6 flex justify-center space-x-4">
                                 <button onClick={() => setShowDeleteConfirmationModal(false)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full">Cancelar</button>
                                 <button onClick={() => handleDeleteTown(townToDelete.id)} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full">Eliminar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showResetModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+                            <h3 className="text-xl font-bold mb-4">Confirmar Reinicio de Ciclo</h3>
+                            <p className="mb-4">Introduce la contraseña para continuar:</p>
+                            <input
+                                type="password"
+                                value={resetPassword}
+                                onChange={(e) => {
+                                    setResetPassword(e.target.value);
+                                    setPasswordError(false);
+                                }}
+                                className={`w-full p-3 border rounded-md dark:bg-gray-700 text-center ${passwordError ? 'border-red-500' : 'border-gray-300'}`}
+                                placeholder="Contraseña"
+                            />
+                            {passwordError && <p className="text-red-500 text-sm mt-2">Contraseña incorrecta. Inténtalo de nuevo.</p>}
+                            <div className="mt-6 flex justify-center space-x-3">
+                                <button onClick={() => setShowResetModal(false)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full">Cancelar</button>
+                                <button onClick={handleResetAllVisitedTowns} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full">Confirmar</button>
                             </div>
                         </div>
                     </div>
