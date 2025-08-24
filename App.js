@@ -67,6 +67,9 @@ function App() {
     const [showUnmarkModal, setShowUnmarkModal] = useState(false);
     const [townToUnmark, setTownToUnmark] = useState(null);
     const [unmarkManualDate, setUnmarkManualDate] = useState('');
+    const [showVisitConfirmationModal, setShowVisitConfirmationModal] = useState(false);
+    const [townToVisit, setTownToVisit] = useState(null);
+
 
     useEffect(() => {
         const unsubscribe = townsCollection.onSnapshot(snapshot => {
@@ -299,7 +302,7 @@ function App() {
                </div>
                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 self-end sm:self-center">
                     {!town.visited ? (
-                       <button onClick={() => handleMarkVisited(town)} className={`${isPrimaryAction ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-bold py-2 px-4 rounded-full shadow-md`}>Visitar</button>
+                       <button onClick={() => { setTownToVisit(town); setShowVisitConfirmationModal(true); }} className={`${isPrimaryAction ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-bold py-2 px-4 rounded-full shadow-md`}>Visitar</button>
                     ) : (
                         <button onClick={() => { setTownToUnmark(town); setShowUnmarkModal(true); }} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-md">No Visitado</button>
                     )}
@@ -489,6 +492,19 @@ function App() {
                             </div>
                             <div className="mt-6 flex justify-center">
                                 <button onClick={() => setShowUnmarkModal(false)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {showVisitConfirmationModal && townToVisit && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+                            <h3 className="text-xl font-bold mb-4">{`¿Marcar "${townToVisit?.name}" como visitado?`}</h3>
+                            <p>Se añadirá la fecha de hoy al historial de visitas.</p>
+                            <div className="mt-6 flex justify-center space-x-4">
+                                <button onClick={() => setShowVisitConfirmationModal(false)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full">Cancelar</button>
+                                <button onClick={() => { handleMarkVisited(townToVisit); setShowVisitConfirmationModal(false); }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-full">Confirmar Visita</button>
                             </div>
                         </div>
                     </div>
