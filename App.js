@@ -155,16 +155,25 @@ function App() {
     const handleUpdateTown = async () => {
         if (!editTownName || !townToEdit) return;
 
-        const manualDate = editTownManualDate ? new Date(editTownManualDate) : null;
-        const newHistory = [...townToEdit.visitHistory];
+        let newHistory = [...townToEdit.visitHistory];
+        const lastVisitTimestamp = newHistory.length > 0 ? newHistory[newHistory.length - 1] : null;
 
-        if (manualDate) {
-            const dateExists = newHistory.some(d => d.toDate().toISOString().split('T')[0] === editTownManualDate);
-            if (!dateExists) {
-                newHistory.push(firebase.firestore.Timestamp.fromDate(manualDate));
+        if (editTownManualDate) {
+            const manualDateTimestamp = firebase.firestore.Timestamp.fromDate(new Date(editTownManualDate));
+            const lastVisitDate = lastVisitTimestamp ? lastVisitTimestamp.toDate().toISOString().split('T')[0] : null;
+            
+            if (lastVisitDate && lastVisitDate !== editTownManualDate) {
+                // If there's a last visit and it's different from the new date, replace it
+                newHistory[newHistory.length - 1] = manualDateTimestamp;
+            } else if (!lastVisitDate) {
+                // If there's no last visit, just add the new one
+                newHistory.push(manualDateTimestamp);
             }
         }
-
+        
+        // Sort the history to ensure the latest date is at the end
+        newHistory.sort((a, b) => a.toDate().getTime() - b.toDate().getTime());
+        
         await townsCollection.doc(townToEdit.id).update({
             name: editTownName,
             notes: editTownNotes,
