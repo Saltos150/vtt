@@ -256,8 +256,15 @@ function App() {
     
     // Separa los pueblos en dos listas distintas: visitados y no visitados.
     const unvisitedTowns = filteredTowns.filter(town => !town.visited).sort((a, b) => {
-        const lastVisitA = getLastVisit(a) || new Date(0);
-        const lastVisitB = getLastVisit(b) || new Date(0);
+        const lastVisitA = getLastVisit(a);
+        const lastVisitB = getLastVisit(b);
+
+        // Si ambos no tienen fecha, no cambiar el orden relativo
+        if (!lastVisitA && !lastVisitB) return 0;
+        // Poner los que no tienen fecha al final de la lista
+        if (!lastVisitA) return 1;
+        if (!lastVisitB) return -1;
+
         return lastVisitA.getTime() - lastVisitB.getTime();
     });
     const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
