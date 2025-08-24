@@ -64,6 +64,9 @@ function App() {
     const [showResetAllDatesModal, setShowResetAllDatesModal] = useState(false);
     const [resetAllDatesPassword, setResetAllDatesPassword] = useState('');
     const [resetAllDatesPasswordError, setResetAllDatesPasswordError] = useState(false);
+    const [showUnmarkModal, setShowUnmarkModal] = useState(false);
+    const [townToUnmark, setTownToUnmark] = useState(null);
+    const [unmarkManualDate, setUnmarkManualDate] = useState('');
 
     useEffect(() => {
         const unsubscribe = townsCollection.onSnapshot(snapshot => {
@@ -244,6 +247,32 @@ function App() {
         setResetAllDatesPasswordError(false);
     };
 
+    const handleUnmarkTown = async () => {
+        const newHistory = [...townToUnmark.visitHistory];
+        newHistory.pop();
+
+        await townsCollection.doc(townToUnmark.id).update({
+            visited: newHistory.length > 0,
+            visitHistory: newHistory
+        });
+        setShowUnmarkModal(false);
+    };
+
+    const handleUpdateVisitDate = async () => {
+        if (!unmarkManualDate) return;
+
+        const manualDate = new Date(unmarkManualDate);
+        const newHistory = [...townToUnmark.visitHistory];
+        newHistory.pop();
+        newHistory.push(firebase.firestore.Timestamp.fromDate(manualDate));
+
+        await townsCollection.doc(townToUnmark.id).update({
+            visited: true,
+            visitHistory: newHistory
+        });
+        setShowUnmarkModal(false);
+    };
+
     const TownListItem = ({ town, isPrimaryAction = true }) => {
         const lastVisit = getLastVisit(town);
         
@@ -263,7 +292,7 @@ function App() {
                     {!town.visited ? (
                        <button onClick={() => handleMarkVisited(town)} className={`${isPrimaryAction ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-bold py-2 px-4 rounded-full shadow-md`}>Visitar</button>
                     ) : (
-                        <button onClick={() => handleMarkVisited(town)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-md">No Visitado</button>
+                        <button onClick={() => { setTownToUnmark(town); setShowUnmarkModal(true); }} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-md">No Visitado</button>
                     )}
                    <button onClick={() => handleEditTown(town)} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow-md">Editar</button>
                </div>
@@ -434,6 +463,28 @@ function App() {
                         </div>
                     </div>
                 )}
+
+                {showUnmarkModal && townToUnmark && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md">
+                            <h3 className="text-2xl font-bold mb-6 text-center">{`Opciones para: ${townToUnmark.name}`}</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <button onClick={handleUnmarkTown} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg">Marcar como "No Visitado"</button>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mt-4">O cambia la fecha de visita a:</label>
+                                    <input type="date" value={unmarkManualDate} onChange={(e) => setUnmarkManualDate(e.target.value)} className="w-full p-3 border rounded-md dark:bg-gray-700"/>
+                                    <button onClick={handleUpdateVisitDate} className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg">Guardar Nueva Fecha</button>
+                                </div>
+                            </div>
+                            <div className="mt-6 flex justify-center">
+                                <button onClick={() => setShowUnmarkModal(false)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
         </div>
     );
