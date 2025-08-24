@@ -252,35 +252,14 @@ function App() {
 
     if (loading) return <div className="flex items-center justify-center min-h-screen bg-gray-100"><div className="text-xl font-semibold">Cargando...</div></div>;
 
-    const sortedTowns = towns.length > 0 ? [...towns].sort((a, b) => {
-        const lastVisitA = getLastVisit(a);
-        const lastVisitB = getLastVisit(b);
-        if (!lastVisitA && lastVisitB) return -1;
-        if (lastVisitA && !lastVisitB) return 1;
-        if (!lastVisitA && !lastVisitB) return a.name.localeCompare(b.name);
-        return lastVisitA - lastVisitB;
-    }) : [];
-
-    const filteredTowns = sortedTowns.filter(town => town.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredTowns = towns.filter(town => town.name.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Lógica de ordenación corregida
+    // Separa los pueblos en dos listas distintas: visitados y no visitados.
     const unvisitedTowns = filteredTowns.filter(town => !town.visited);
     const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
 
-    const getOldestVisitedTown = () => {
-        const sortedVisited = [...visitedTowns].sort((a, b) => getLastVisit(a) - getLastVisit(b));
-        return sortedVisited.length > 0 ? sortedVisited[0] : null;
-    };
-
-    let next10UnvisitedTowns = [];
-    const oldestVisited = getOldestVisitedTown();
-
-    if (oldestVisited) {
-        const otherUnvisited = unvisitedTowns.filter(town => town.name !== oldestVisited.name).sort((a, b) => a.name.localeCompare(b.name));
-        next10UnvisitedTowns = [oldestVisited, ...otherUnvisited].slice(0, 10);
-    } else {
-        next10UnvisitedTowns = unvisitedTowns.slice(0, 10);
-    }
+    // Muestra las 10 primeras poblaciones no visitadas
+    const next10UnvisitedTowns = unvisitedTowns.slice(0, 10);
     
     return (
         <div className="h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100 font-inter p-4 sm:p-6 md:p-8">
