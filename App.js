@@ -255,7 +255,7 @@ function App() {
     const filteredTowns = towns.filter(town => town.name.toLowerCase().includes(searchTerm.toLowerCase()));
     
     // Separa los pueblos en dos listas distintas: visitados y no visitados.
-    const unvisitedTowns = filteredTowns.filter(town => !town.visited);
+    const unvisitedTowns = filteredTowns.filter(town => !town.visited).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
 
     // Muestra las 10 primeras poblaciones no visitadas
