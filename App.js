@@ -61,6 +61,9 @@ function App() {
     const [showResetModal, setShowResetModal] = useState(false);
     const [resetPassword, setResetPassword] = useState('');
     const [passwordError, setPasswordError] = useState(false);
+    const [showResetAllDatesModal, setShowResetAllDatesModal] = useState(false);
+    const [resetAllDatesPassword, setResetAllDatesPassword] = useState('');
+    const [resetAllDatesPasswordError, setResetAllDatesPasswordError] = useState(false);
 
     useEffect(() => {
         const unsubscribe = townsCollection.onSnapshot(snapshot => {
@@ -223,6 +226,24 @@ function App() {
         setPasswordError(false);
     };
     
+    const handleResetAllDates = async () => {
+        if (resetAllDatesPassword !== "1980") {
+            setResetAllDatesPasswordError(true);
+            return;
+        }
+
+        const allTownsSnapshot = await townsCollection.get();
+        const batch = db.batch();
+        allTownsSnapshot.forEach(doc => {
+            batch.update(doc.ref, { visited: false, visitHistory: [] });
+        });
+        await batch.commit();
+
+        setShowResetAllDatesModal(false);
+        setResetAllDatesPassword('');
+        setResetAllDatesPasswordError(false);
+    };
+
     const TownListItem = ({ town, isPrimaryAction = true }) => {
         const lastVisit = getLastVisit(town);
         
@@ -259,8 +280,10 @@ function App() {
         const lastVisitA = getLastVisit(a);
         const lastVisitB = getLastVisit(b);
 
-        // Si ambos no tienen fecha, no cambiar el orden relativo
-        if (!lastVisitA && !lastVisitB) return 0;
+        // Si ambos no tienen fecha, ordenar por nombre alfabéticamente
+        if (!lastVisitA && !lastVisitB) {
+            return a.name.localeCompare(b.name);
+        }
         // Poner los que no tienen fecha al final de la lista
         if (!lastVisitA) return 1;
         if (!lastVisitB) return -1;
@@ -306,6 +329,7 @@ function App() {
                 <div className="text-center mt-8 flex-shrink-0 flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
                     <button onClick={() => setShowAddTownModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-full shadow-lg">➕ Añadir Nuevo Pueblo</button>
                     <button onClick={handleDownloadCSV} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg">⬇️ Descargar Historial</button>
+                    <button onClick={() => setShowResetAllDatesModal(true)} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg">🗑️ Eliminar Historial Completo</button>
                 </div>
 
                 {showAddTownModal && (
@@ -382,6 +406,30 @@ function App() {
                             <div className="mt-6 flex justify-center space-x-3">
                                 <button onClick={() => setShowResetModal(false)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full">Cancelar</button>
                                 <button onClick={handleResetAllVisitedTowns} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full">Confirmar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {showResetAllDatesModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+                            <h3 className="text-xl font-bold mb-4">Confirmar Eliminación de Fechas</h3>
+                            <p className="mb-4">Introduce la contraseña para eliminar todas las fechas de visita:</p>
+                            <input
+                                type="password"
+                                value={resetAllDatesPassword}
+                                onChange={(e) => {
+                                    setResetAllDatesPassword(e.target.value);
+                                    setResetAllDatesPasswordError(false);
+                                }}
+                                className={`w-full p-3 border rounded-md dark:bg-gray-700 text-center ${resetAllDatesPasswordError ? 'border-red-500' : 'border-gray-300'}`}
+                                placeholder="Contraseña"
+                            />
+                            {resetAllDatesPasswordError && <p className="text-red-500 text-sm mt-2">Contraseña incorrecta. Inténtalo de nuevo.</p>}
+                            <div className="mt-6 flex justify-center space-x-3">
+                                <button onClick={() => setShowResetAllDatesModal(false)} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full">Cancelar</button>
+                                <button onClick={handleResetAllDates} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full">Confirmar</button>
                             </div>
                         </div>
                     </div>
