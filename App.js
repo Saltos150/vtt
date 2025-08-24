@@ -224,18 +224,19 @@ function App() {
     
     const TownListItem = ({ town, isPrimaryAction = true }) => {
         const lastVisit = getLastVisit(town);
+        const displayDate = lastVisit ? lastVisit.toLocaleDateString('es-ES') : town.createdAt.toLocaleDateString('es-ES');
+        const dateLabel = lastVisit ? '📅 Última Visita:' : '➕ Añadido el:';
+        
         return (
              <li className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-md">
                <div className="flex-grow mb-2 sm:mb-0">
                    <span className="font-semibold text-lg text-gray-800 dark:text-gray-200">{town.name}</span>
                    {town.notes && <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">📝 {town.notes}</p>}
                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {lastVisit && (
-                            <div>
-                                <span className="font-bold">📅 Última Visita: </span>
-                                {lastVisit.toLocaleDateString('es-ES')}
-                            </div>
-                        )}
+                        <div>
+                            <span className="font-bold">{dateLabel} </span>
+                            {displayDate}
+                        </div>
                    </div>
                </div>
                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 self-end sm:self-center">
