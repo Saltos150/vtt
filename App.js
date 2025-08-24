@@ -262,8 +262,9 @@ function App() {
     });
     const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
 
-    // Muestra las 10 primeras poblaciones no visitadas
+    // Divide los pueblos pendientes en "Próximas 10" y "Resto"
     const next10UnvisitedTowns = unvisitedTowns.slice(0, 10);
+    const remainingUnvisitedTowns = unvisitedTowns.slice(10);
     
     return (
         <div className="h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100 font-inter p-4 sm:p-6 md:p-8">
@@ -285,8 +286,8 @@ function App() {
                     </div>
 
                     <div className="mb-10 p-6 bg-yellow-50 dark:bg-yellow-900 rounded-lg shadow-md">
-                        <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-4">{`⚠️ Poblaciones Pendientes (${unvisitedTowns.length})`}</h2>
-                        {unvisitedTowns.length > 0 ? <ul className="space-y-3">{unvisitedTowns.map(town => <TownListItem key={town.id} town={town} isPrimaryAction={false} />)}</ul> : <div className="text-center"><p>¡Enhorabuena! Has visitado todas las poblaciones.</p><button onClick={() => setShowResetModal(true)} className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full">Reiniciar Ciclo</button></div>}
+                        <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-4">{`⚠️ Poblaciones Pendientes (${remainingUnvisitedTowns.length})`}</h2>
+                        {remainingUnvisitedTowns.length > 0 ? <ul className="space-y-3">{remainingUnvisitedTowns.map(town => <TownListItem key={town.id} town={town} isPrimaryAction={false} />)}</ul> : <div className="text-center"><p>¡Enhorabuena! Has visitado todas las poblaciones.</p><button onClick={() => setShowResetModal(true)} className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full">Reiniciar Ciclo</button></div>}
                     </div>
 
                     <div className="mb-10 p-6 bg-green-50 dark:bg-green-900 rounded-lg shadow-md">
