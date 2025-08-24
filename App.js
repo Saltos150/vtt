@@ -213,7 +213,8 @@ function App() {
         const visitedTownsSnapshot = await townsCollection.where('visited', '==', true).get();
         const batch = db.batch();
         visitedTownsSnapshot.forEach(doc => {
-            batch.update(doc.ref, { visited: false, visitHistory: [] });
+            // Se cambia para que no se borre el historial de visitas
+            batch.update(doc.ref, { visited: false });
         });
         await batch.commit();
 
@@ -224,8 +225,6 @@ function App() {
     
     const TownListItem = ({ town, isPrimaryAction = true }) => {
         const lastVisit = getLastVisit(town);
-        const displayDate = lastVisit ? lastVisit.toLocaleDateString('es-ES') : town.createdAt.toLocaleDateString('es-ES');
-        const dateLabel = lastVisit ? '📅 Última Visita:' : '➕ Añadido el:';
         
         return (
              <li className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-md">
@@ -234,8 +233,8 @@ function App() {
                    {town.notes && <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">📝 {town.notes}</p>}
                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         <div>
-                            <span className="font-bold">{dateLabel} </span>
-                            {displayDate}
+                            <span className="font-bold">📅 Última Visita: </span>
+                            {lastVisit ? lastVisit.toLocaleDateString('es-ES') : 'N/A'}
                         </div>
                    </div>
                </div>
@@ -256,7 +255,11 @@ function App() {
     const filteredTowns = towns.filter(town => town.name.toLowerCase().includes(searchTerm.toLowerCase()));
     
     // Separa los pueblos en dos listas distintas: visitados y no visitados.
-    const unvisitedTowns = filteredTowns.filter(town => !town.visited).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const unvisitedTowns = filteredTowns.filter(town => !town.visited).sort((a, b) => {
+        const lastVisitA = getLastVisit(a) || new Date(0);
+        const lastVisitB = getLastVisit(b) || new Date(0);
+        return lastVisitA.getTime() - lastVisitB.getTime();
+    });
     const visitedTowns = filteredTowns.filter(town => town.visited).sort((a, b) => getLastVisit(b) - getLastVisit(a));
 
     // Muestra las 10 primeras poblaciones no visitadas
